@@ -42,7 +42,7 @@ for (let m = 0; m < M; m++) {
 }
 applyStatus(strip);
 
-let W = 0, H = 0, cw = 0, ch = 0, step = 0, top0 = 0;
+let dpr = 1, W = 0, H = 0, cw = 0, ch = 0, step = 0, top0 = 0;
 let pos = 0, target = 0, snapping = true, lastDir = 1;
 type Open = { m: number; sheet: HTMLElement; closing?: boolean };
 let openState: Open | null = null;
@@ -52,11 +52,11 @@ const startIdx = sections.findIndex((s) => s.id === startHash);
 if (startIdx > 0) pos = target = startIdx;
 
 function layout() {
-  W = innerWidth; H = innerHeight;
+  W = innerWidth; H = innerHeight; dpr = devicePixelRatio || 1;
   cw = W < 640 ? W * 0.8 : Math.min(W * 0.56, 680);
-  ch = cw * 0.6;
+  cw = Math.round(cw); ch = Math.round(cw * 0.6);
   step = cw + Math.max(14, cw * 0.025);
-  top0 = (H - ch) / 2;
+  top0 = Math.round(((H - ch) / 2) * dpr) / dpr;
   cards.forEach((c) => { c.style.width = cw + "px"; c.style.height = ch + "px"; });
 }
 
@@ -67,11 +67,11 @@ function frame() {
   if (Math.abs(target - pos) < 0.0005) pos = target;
   cards.forEach((c, m) => {
     const d = wrapD(m - pos);
-    const x = W / 2 + d * step - cw / 2;
+    const x = Math.round((W / 2 + d * step - cw / 2) * dpr) / dpr;
     const near = Math.max(0, 1 - Math.abs(d));
     const vis = Math.abs(d * step) < W / 2 + step;
     c.style.visibility = vis && !(openState && openState.m === m) ? "visible" : "hidden";
-    c.style.transform = `translate3d(${x.toFixed(2)}px, ${top0.toFixed(2)}px, 0) scale(${(1 + 0.035 * near).toFixed(4)})`;
+    c.style.transform = `translate3d(${x}px, ${top0}px, 0)`;
     (c.querySelector(".lbl") as HTMLElement).style.opacity = (0.45 + 0.55 * near).toFixed(3);
     c.tabIndex = Math.abs(d) < 0.5 ? 0 : -1;
   });
