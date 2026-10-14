@@ -1,5 +1,6 @@
 ---
 import Base from "./Base.astro";
+import Mark from "../components/Mark.astro";
 import { site } from "../data/site";
 
 interface Props {
@@ -12,7 +13,7 @@ const { title, description, type } = Astro.props;
 
 <Base title={title} description={description} type={type}>
   <nav class="wtop">
-    <a href="/" class="me">{site.name}</a>
+    <a href="/" class="me"><Mark />{site.name}</a>
     <a href="/writing" class="crumb">Writing</a>
   </nav>
   <main class="panel">
@@ -27,7 +28,7 @@ const { title, description, type } = Astro.props;
     font-family: var(--f-mono); font-size: 11px; color: var(--muted);
   }
   .wtop a { text-decoration: none; }
-  .wtop .me { color: var(--fg); font-family: var(--f-body); font-size: 13px; font-weight: 500; }
+  .wtop .me { display: inline-flex; align-items: center; gap: 8px; color: var(--fg); font-family: var(--f-body); font-size: 13px; font-weight: 500; }
   .wtop .crumb:hover { color: var(--fg); }
   .panel {
     view-transition-name: panel;

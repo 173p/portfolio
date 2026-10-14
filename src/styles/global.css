@@ -33,6 +33,7 @@ body {
 img { max-width: 100%; }
 a { color: inherit; }
 [hidden] { display: none !important; }
+.mark { width: 16px; height: 15px; flex: none; color: var(--fg); }
 
 .rows { list-style: none; margin: 4px 0 0; padding: 0; display: grid; }
 .rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; padding: 12px 0; border-top: 1px solid var(--rule); }
