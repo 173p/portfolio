@@ -42,5 +42,5 @@ const date = post.data.date.toLocaleDateString("en-GB", { day: "numeric", month:
       document.body.appendChild(zoom);
     });
   });
-  addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+  addEventListener("keydown", (e) => { if (e.key === "Escape" && zoom) { e.preventDefault(); close(); } });
 </script>

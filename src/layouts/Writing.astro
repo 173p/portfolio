@@ -21,6 +21,18 @@ const { title, description, type } = Astro.props;
   </main>
 </Base>
 
+<script>
+  const clean = (p: string) => p.replace(/\/$/, "") || "/";
+  addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || e.defaultPrevented || document.querySelector(".zoom")) return;
+    const here = clean(location.pathname);
+    const parent = here === "/writing" ? "/" : "/writing";
+    const ref = document.referrer ? new URL(document.referrer) : null;
+    if (ref && ref.origin === location.origin && clean(ref.pathname) === parent && history.length > 1) history.back();
+    else location.href = parent === "/" ? "/#writing" : parent;
+  });
+</script>
+
 <style is:global>
   .wtop {
     max-width: 760px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;
@@ -28,7 +40,7 @@ const { title, description, type } = Astro.props;
     font-family: var(--f-mono); font-size: 11px; color: var(--muted);
   }
   .wtop a { text-decoration: none; }
-  .wtop .me { display: inline-flex; align-items: center; gap: 8px; color: var(--fg); font-family: var(--f-body); font-size: 13px; font-weight: 500; }
+  .wtop .me { view-transition-name: brand; display: inline-flex; align-items: center; gap: 8px; color: var(--fg); font-family: var(--f-body); font-size: 13px; font-weight: 500; }
   .wtop .crumb:hover { color: var(--fg); }
   .panel {
     view-transition-name: panel;

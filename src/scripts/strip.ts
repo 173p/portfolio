@@ -49,7 +49,10 @@ let openState: Open | null = null;
 
 const startHash = location.hash.slice(1);
 const startIdx = sections.findIndex((s) => s.id === startHash);
-if (startIdx > 0) pos = target = startIdx;
+const cameFrom = (window as any).navigation?.activation?.from?.url ?? document.referrer;
+const fromWriting = !!cameFrom && new URL(cameFrom).origin === location.origin && new URL(cameFrom).pathname.startsWith("/writing");
+const landIdx = startIdx >= 0 ? startIdx : fromWriting ? sections.findIndex((s) => s.id === "writing") : -1;
+if (landIdx > 0) pos = target = landIdx;
 
 function layout() {
   W = innerWidth; H = innerHeight; dpr = devicePixelRatio || 1;
@@ -65,6 +68,11 @@ const wrapD = (d: number) => d - M * Math.round(d / M);
 function frame() {
   pos += (target - pos) * (reduce ? 1 : snapping ? 0.1 : 0.2);
   if (Math.abs(target - pos) < 0.0005) pos = target;
+  draw();
+  requestAnimationFrame(frame);
+}
+
+function draw() {
   cards.forEach((c, m) => {
     const d = wrapD(m - pos);
     const x = Math.round((W / 2 + d * step - cw / 2) * dpr) / dpr;
@@ -78,7 +86,6 @@ function frame() {
   const sw = 168, bw = (sw / N) * 0.9, x0 = (mod(pos, N) / N) * sw;
   brackets[0].style.cssText = `left:${x0.toFixed(2)}px;width:${bw}px`;
   brackets[1].style.cssText = `left:${(x0 + (x0 > sw / 2 ? -sw : sw)).toFixed(2)}px;width:${bw}px`;
-  requestAnimationFrame(frame);
 }
 
 let snapT: number | undefined;
@@ -185,7 +192,8 @@ function openSheet(m: number) {
   parts.slice(0, 10).forEach((el, i) => el.animate(
     [{ opacity: 0, transform: "translateY(10px)", filter: "blur(5px)" }, { opacity: 1, transform: "none", filter: "blur(0)" }],
     { duration: reduce ? 0 : 520, delay: reduce ? 0 : 220 + i * 60, easing: EASE, fill: "backwards" }));
-  setTimeout(() => sheet.querySelector<HTMLElement>(".close")!.focus({ preventScroll: true }), dur);
+  sheet.tabIndex = -1;
+  setTimeout(() => sheet.focus({ preventScroll: true }), dur);
   document.addEventListener("pointerdown", outside, true);
 }
 
@@ -234,7 +242,19 @@ if (startHash === "saudi-web-infrastructure") location.replace("/writing/saudi-w
 
 addEventListener("pageshow", () => cards.forEach((c) => { c.style.viewTransitionName = ""; }));
 
+addEventListener("pagereveal", (e) => {
+  const vt = (e as Event & { viewTransition?: ViewTransition | null }).viewTransition;
+  if (!vt) return;
+  const from = (window as any).navigation?.activation?.from?.url;
+  if (!from || !new URL(from).pathname.startsWith("/writing")) return;
+  const card = cards.find((c, m) => sections[m % N].href && Math.abs(wrapD(m - pos)) < 0.5);
+  if (!card) return;
+  card.style.viewTransitionName = "panel";
+  vt.finished.finally(() => { card.style.viewTransitionName = ""; });
+});
+
 addEventListener("resize", () => { layout(); if (openState) navigate(""); });
 layout();
+draw();
 requestAnimationFrame(frame);
 if (startIdx >= 0 && !sections[startIdx].href) setTimeout(() => route(startHash), 300);
