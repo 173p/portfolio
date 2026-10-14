@@ -1,0 +1,22 @@
+---
+import Writing from "../../layouts/Writing.astro";
+import { getCollection } from "astro:content";
+
+const posts = (await getCollection("writing", (p) => !p.data.draft)).sort((a, b) => +b.data.date - +a.data.date);
+const fmt = (d: Date) => d.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+---
+
+<Writing title="Writing · Abdulla Alhamly" description="Articles by Abdulla Alhamly on infrastructure and the Saudi web.">
+  <a class="back" href="/">← Home</a>
+  <h1>Writing</h1>
+  <p class="meta">{posts.length} {posts.length === 1 ? "piece" : "pieces"}</p>
+  <ul class="rows posts">
+    {posts.map((p) => (
+      <li>
+        <a class="t" href={`/writing/${p.id}`}>{p.data.title}</a>
+        <span class="m">{fmt(p.data.date)}</span>
+        <span class="d">{p.data.summary}</span>
+      </li>
+    ))}
+  </ul>
+</Writing>

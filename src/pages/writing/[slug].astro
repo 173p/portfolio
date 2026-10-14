@@ -1,0 +1,46 @@
+---
+import Writing from "../../layouts/Writing.astro";
+import { getCollection, render } from "astro:content";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("writing", (p) => !p.data.draft);
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const words = (post.body ?? "").replace(/!\[[^\]]*\]\([^)]*\)/g, "").split(/\s+/).filter(Boolean).length;
+const minutes = Math.max(1, Math.round(words / 230));
+const date = post.data.date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+---
+
+<Writing title={`${post.data.title} · Abdulla Alhamly`} description={post.data.summary} type="article">
+  <a class="back" href="/writing">← All writing</a>
+  <h1>{post.data.title}</h1>
+  <p class="meta">{date} · {minutes} min read</p>
+  <article class="article">
+    <Content />
+  </article>
+</Writing>
+
+<script>
+  let zoom: HTMLElement | null = null;
+  const close = () => { zoom?.remove(); zoom = null; };
+  document.querySelectorAll<HTMLImageElement>(".article img").forEach((img) => {
+    img.addEventListener("click", () => {
+      zoom = document.createElement("div");
+      zoom.className = "zoom";
+      zoom.setAttribute("role", "dialog");
+      zoom.setAttribute("aria-label", img.alt);
+      const big = document.createElement("img");
+      big.src = img.currentSrc || img.src; big.alt = img.alt;
+      const hint = document.createElement("span");
+      hint.className = "hint";
+      hint.textContent = innerWidth < 640 ? "Swipe to pan, tap to close" : "Click to close";
+      zoom.append(big, hint);
+      zoom.addEventListener("click", close);
+      document.body.appendChild(zoom);
+    });
+  });
+  addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+</script>

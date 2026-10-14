@@ -1,0 +1,52 @@
+---
+import Base from "./Base.astro";
+import { site } from "../data/site";
+
+interface Props {
+  title: string;
+  description: string;
+  type?: "website" | "article";
+}
+const { title, description, type } = Astro.props;
+---
+
+<Base title={title} description={description} type={type}>
+  <nav class="wtop">
+    <a href="/" class="me">{site.name}</a>
+    <a href="/writing" class="crumb">Writing</a>
+  </nav>
+  <main class="panel">
+    <slot />
+  </main>
+</Base>
+
+<style is:global>
+  .wtop {
+    max-width: 760px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;
+    padding: calc(18px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 18px max(16px, env(safe-area-inset-left, 0px));
+    font-family: var(--f-mono); font-size: 11px; color: var(--muted);
+  }
+  .wtop a { text-decoration: none; }
+  .wtop .me { color: var(--fg); font-family: var(--f-body); font-size: 13px; font-weight: 500; }
+  .wtop .crumb:hover { color: var(--fg); }
+  .panel {
+    view-transition-name: panel;
+    max-width: 760px; margin: 0 auto calc(48px + env(safe-area-inset-bottom, 0px)); background: var(--card);
+    padding: 32px 32px 40px;
+  }
+  .panel h1 { margin: 0 0 10px; font-size: clamp(30px, 6vw, 44px); font-weight: 500; letter-spacing: -.04em; line-height: 1.06; text-wrap: balance; }
+  .panel .meta { font-family: var(--f-mono); font-size: 12px; color: var(--muted); margin: 0 0 28px; }
+  .back { display: inline-block; font-family: var(--f-mono); font-size: 11px; color: var(--muted); text-decoration: none; margin-bottom: 18px; }
+  .back:hover { color: var(--fg); }
+  .posts a.t { font-size: 17px; letter-spacing: -.01em; }
+  @media (max-width: 800px) { .panel { margin-left: max(16px, env(safe-area-inset-left, 0px)); margin-right: max(16px, env(safe-area-inset-right, 0px)); } }
+  @media (max-width: 640px) { .panel { padding: 24px 20px 32px; } }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .panel > * { animation: rise .52s cubic-bezier(.2,.75,.15,1) backwards; }
+    .panel > *:nth-child(2) { animation-delay: .06s; }
+    .panel > *:nth-child(3) { animation-delay: .12s; }
+    .panel > *:nth-child(n+4) { animation-delay: .18s; }
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); filter: blur(5px); } }
+</style>
