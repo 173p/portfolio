@@ -14,6 +14,8 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const strip = document.getElementById("strip")!;
 const ticksEl = document.getElementById("ticks")!;
 const brackets = [...document.querySelectorAll<HTMLElement>(".bracket")];
+const hint = document.getElementById("hint");
+const coarse = matchMedia("(pointer: coarse)");
 const mod = (a: number, n: number) => ((a % n) + n) % n;
 const EASE = "cubic-bezier(.2,.75,.15,1)";
 
@@ -42,7 +44,7 @@ for (let m = 0; m < M; m++) {
 }
 applyStatus(strip);
 
-let dpr = 1, W = 0, H = 0, cw = 0, ch = 0, step = 0, top0 = 0;
+let dpr = 1, W = 0, H = 0, cw = 0, ch = 0, step = 0, top0 = 0, left0 = 0, vertical = false;
 let pos = 0, target = 0, snapping = true, lastDir = 1;
 type Open = { m: number; sheet: HTMLElement; closing?: boolean };
 let openState: Open | null = null;
@@ -56,17 +58,24 @@ if (landIdx > 0) pos = target = landIdx;
 
 function layout() {
   W = innerWidth; H = innerHeight; dpr = devicePixelRatio || 1;
-  cw = W < 640 ? W * 0.8 : Math.min(W * 0.56, 680);
+  // Stack vertically on touch screens held upright; desktop and landscape stay horizontal.
+  vertical = coarse.matches && H > W;
+  document.body.classList.toggle("vertical", vertical);
+  if (hint) hint.textContent = coarse.matches ? "Swipe to browse, tap to open" : "Scroll to browse, click to open";
+  cw = vertical ? Math.min(W - 40, 520) : W < 640 ? W * 0.8 : Math.min(W * 0.56, 680);
   cw = Math.round(cw); ch = Math.round(cw * 0.6);
-  step = cw + Math.max(14, cw * 0.025);
+  // Vertical: leave room above each card for its label.
+  step = vertical ? ch + 40 : cw + Math.max(14, cw * 0.025);
   top0 = Math.round(((H - ch) / 2) * dpr) / dpr;
+  left0 = Math.round(((W - cw) / 2) * dpr) / dpr;
   cards.forEach((c) => { c.style.width = cw + "px"; c.style.height = ch + "px"; });
 }
 
 const wrapD = (d: number) => d - M * Math.round(d / M);
 
 function frame() {
-  pos += (target - pos) * (reduce ? 1 : snapping ? 0.1 : 0.2);
+  if (drag) pos = target; // follow the finger 1:1 while dragging
+  else pos += (target - pos) * (reduce ? 1 : snapping ? 0.1 : 0.2);
   if (Math.abs(target - pos) < 0.0005) pos = target;
   draw();
   requestAnimationFrame(frame);
@@ -75,11 +84,11 @@ function frame() {
 function draw() {
   cards.forEach((c, m) => {
     const d = wrapD(m - pos);
-    const x = Math.round((W / 2 + d * step - cw / 2) * dpr) / dpr;
+    const off = Math.round(d * step * dpr) / dpr;
     const near = Math.max(0, 1 - Math.abs(d));
-    const vis = Math.abs(d * step) < W / 2 + step;
+    const vis = Math.abs(d * step) < (vertical ? H : W) / 2 + step;
     c.style.visibility = vis && !(openState && openState.m === m) ? "visible" : "hidden";
-    c.style.transform = `translate3d(${x}px, ${top0}px, 0)`;
+    c.style.transform = vertical ? `translate3d(${left0}px, ${top0 + off}px, 0)` : `translate3d(${left0 + off}px, ${top0}px, 0)`;
     (c.querySelector(".lbl") as HTMLElement).style.opacity = (0.45 + 0.55 * near).toFixed(3);
     c.tabIndex = Math.abs(d) < 0.5 ? 0 : -1;
   });
@@ -104,30 +113,50 @@ addEventListener("wheel", (e) => {
   }, 120);
 }, { passive: false });
 
-let drag: { x: number; y: number; t: number; vx: number; lx: number } | null = null, moved = false;
+type Drag = { x: number; y: number; t: number; samples: { p: number; t: number }[] };
+let drag: Drag | null = null, moved = false;
+const along = (e: PointerEvent, d: Drag) => {
+  const dx = e.clientX - d.x, dy = e.clientY - d.y;
+  if (vertical) return Math.abs(dy) >= Math.abs(dx) ? dy : dx * 0.6;
+  return Math.abs(dx) >= Math.abs(dy) ? dx : dy * 0.6;
+};
 strip.addEventListener("pointerdown", (e) => {
-  drag = { x: e.clientX, y: e.clientY, t: target, vx: 0, lx: e.clientX }; moved = false;
+  target = Math.round(pos); // catch a card mid-flight instead of jumping
+  drag = { x: e.clientX, y: e.clientY, t: target, samples: [{ p: 0, t: e.timeStamp }] }; moved = false;
   strip.setPointerCapture(e.pointerId);
 });
 strip.addEventListener("pointermove", (e) => {
   if (!drag) return;
-  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-  const d = Math.abs(dx) > Math.abs(dy) ? dx : -dy * 0.6;
+  const d = along(e, drag);
   if (Math.abs(d) > 5) { moved = true; strip.classList.add("drag"); }
   target = drag.t - d / step;
-  drag.vx = e.clientX - drag.lx; drag.lx = e.clientX;
+  drag.samples.push({ p: d, t: e.timeStamp });
+  if (drag.samples.length > 6) drag.samples.shift();
 });
 strip.addEventListener("pointerup", (e) => {
   if (!drag) return;
   strip.classList.remove("drag");
-  if (moved) target = Math.round(target - drag.vx / 40);
-  else {
+  if (moved) {
+    // Velocity (px/ms) over the last ~100ms of the gesture.
+    const last = drag.samples[drag.samples.length - 1];
+    const first = drag.samples.find((s) => last.t - s.t <= 100) ?? last;
+    const v = last.t > first.t ? (last.p - first.p) / (last.t - first.t) : 0;
+    const shift = target - drag.t;
+    let n = 0;
+    if (Math.abs(v) > 0.2) n = -Math.sign(v) * (Math.abs(v) > 2.2 ? 2 : 1); // a light flick is enough
+    else if (Math.abs(shift) > 0.18) n = Math.sign(shift) * Math.max(1, Math.round(Math.abs(shift))); // or a short drag
+    target = drag.t + n;
+    snapping = true;
+  } else {
     const c = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest(".card");
     if (c) choose(cards.indexOf(c as HTMLButtonElement));
   }
   drag = null;
 });
-strip.addEventListener("pointercancel", () => { drag = null; strip.classList.remove("drag"); });
+strip.addEventListener("pointercancel", () => {
+  if (drag) target = Math.round(target);
+  drag = null; strip.classList.remove("drag");
+});
 
 addEventListener("keydown", (e) => {
   if (openState) { if (e.key === "Escape") navigate(""); return; }
@@ -254,6 +283,8 @@ addEventListener("pagereveal", (e) => {
 });
 
 addEventListener("resize", () => { layout(); if (openState) navigate(""); });
+// Touch support can change without a resize (e.g. toggling device emulation, attaching a mouse to a tablet).
+coarse.addEventListener("change", () => layout());
 layout();
 draw();
 requestAnimationFrame(frame);

@@ -17,7 +17,7 @@ const statusUrl = import.meta.env.PUBLIC_STATUS_URL ?? "";
 
   <div class="strip" id="strip" role="list" aria-label="Sections" data-status-url={statusUrl}></div>
 
-  <div class="bottom"><span>Scroll to browse, click to open</span></div>
+  <div class="bottom"><span id="hint">Scroll to browse, click to open</span></div>
 
   <noscript>
     <nav class="noscript">
@@ -112,6 +112,7 @@ const statusUrl = import.meta.env.PUBLIC_STATUS_URL ?? "";
   .scrub { position: relative; width: 168px; height: 12px; overflow: hidden; flex: none; }
   .ticks { position: absolute; inset: 0; display: flex; justify-content: space-between; align-items: center; }
   .ticks i { width: 1px; height: 9px; background: var(--muted); opacity: .55; }
+  body.vertical .scrub { visibility: hidden; }
   .bracket { position: absolute; top: 0; height: 12px; border: 1px solid var(--fg); border-radius: 2px; background: var(--bg); }
 
   .strip { position: fixed; inset: 0; touch-action: none; cursor: grab; transition: opacity .35s; }
